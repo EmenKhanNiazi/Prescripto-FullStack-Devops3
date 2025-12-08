@@ -5,8 +5,8 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
 # The base URL for the local Prescripto application
-BASE_URL = "http://localhost:5173"
-ADMIN_BASE_URL = "http://localhost:5174"
+BASE_URL = "http://43.204.98.50:5173"
+ADMIN_BASE_URL = "http://43.204.98.50:5174"
 
 # Fixture to set up the WebDriver for all tests
 @pytest.fixture(scope="module")
