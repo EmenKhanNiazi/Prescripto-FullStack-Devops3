@@ -30,7 +30,7 @@ services:
     restart: "no"
     environment:
       # CRITICAL: New EC2 IP and backend port
-      - VITE_BACKEND_URL=http://localhost:4001
+      - VITE_BACKEND_URL=http://43.204.98.50:4001
     depends_on:
       - backend-dev
     ports:
