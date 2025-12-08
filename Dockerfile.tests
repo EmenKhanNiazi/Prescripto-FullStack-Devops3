@@ -3,12 +3,16 @@ FROM python:3.12-slim
 # Install Chrome and dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
-    chromium-driver \
+    # FIX: REMOVE outdated chromium-driver from apt-get. 
+    # We rely on Python's webdriver-manager for the driver binary.
     wget \
     curl \
     gnupg \
     unzip \
     git \
+    libglib2.0-0 \  # Essential library for running Headless Chrome in containers
+    # Add libnss3 for SSL/network operations inside the container
+    libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
