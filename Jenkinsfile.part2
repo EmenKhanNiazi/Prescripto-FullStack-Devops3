@@ -58,7 +58,7 @@ pipeline {
                     
                     echo ""
                     echo "Checking backend health:"
-                    curl -s http://localhost:4001/api/health || echo "Backend may still be starting..."
+                    curl -s http://43.204.98.50:4001/api/health || echo "Backend may still be starting..."
                     
                     echo ""
                     echo "✓ Deployment verification complete"
@@ -167,7 +167,7 @@ pipeline {
                     <hr>
                     <p><em>This is an automated message from Jenkins Pipeline</em></p>
                 ''',
-                to: '${CHANGE_AUTHOR_EMAIL}',
+                to: 'aimankhanniazi16@gmail.com',
                 mimeType: 'text/html'
             )
         }
@@ -190,7 +190,7 @@ pipeline {
                     <hr>
                     <p><em>This is an automated message from Jenkins Pipeline</em></p>
                 ''',
-                to: '${CHANGE_AUTHOR_EMAIL}',
+                to: 'aimankhanniazi16@gmail.com',
                 mimeType: 'text/html'
             )
         }
@@ -205,7 +205,7 @@ pipeline {
                     <p><strong>Some tests may have failed. Please review.</strong></p>
                     <p><strong>Test Results:</strong> <a href="${BUILD_URL}testReport">View Test Report</a></p>
                 ''',
-                to: '${CHANGE_AUTHOR_EMAIL}',
+                to: 'aimankhanniazi16@gmail.com',
                 mimeType: 'text/html'
             )
         }
