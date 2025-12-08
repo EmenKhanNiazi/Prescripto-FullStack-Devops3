@@ -1,16 +1,21 @@
 FROM python:3.12-slim
 
-# Install Chrome and necessary dependencies (driver is handled separately by Python)
+# Install Chrome and necessary dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
+    chromium-driver \
     wget \
     curl \
     gnupg \
     unzip \
     git \
-    libglib2.0-0 \  
-    libnss3 \       
+    libglib2.0-0 \
+    libnss3 \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify Chromium and ChromeDriver versions match
+RUN echo "Chromium version:" && chromium --version && \
+    echo "ChromeDriver version:" && chromedriver --version
 
 # Set working directory
 WORKDIR /app
@@ -25,3 +30,4 @@ COPY test_prescripto_e2e.py .
 
 # Run tests by default
 CMD ["pytest", "test_prescripto_e2e.py", "-v", "--tb=short"]
+

@@ -2,11 +2,11 @@ import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 
 # The base URL for the local Prescripto application
 BASE_URL = "http://43.204.98.50:5174"
 ADMIN_BASE_URL = "http://43.204.98.50:5174/admin"
+BACKEND_URL = "http://43.204.98.50:4001"
 
 # Fixture to set up the WebDriver for all tests
 @pytest.fixture(scope="module")
@@ -19,8 +19,8 @@ def driver():
     # 1. Configure Chrome Options
     chrome_options = Options()
     
-    # FIX: Explicitly set the binary path for the apt-installed Chromium
-    chrome_options.binary_location = '/usr/bin/chromium' 
+    # Set the binary path for Chromium
+    chrome_options.binary_location = '/usr/bin/chromium'
     
     # Use 'new' headless mode for modern Chrome versions
     chrome_options.add_argument("--headless=new")
@@ -31,10 +31,9 @@ def driver():
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-gpu")
     
-    # 2. Install and configure ChromeDriver
+    # 2. Use system chromedriver directly (installed via chromium-driver package)
     try:
-        # ChromeDriverManager will now download the correct version (v143)
-        service = ChromeService(ChromeDriverManager().install())
+        service = ChromeService('/usr/bin/chromedriver')
         web_driver = webdriver.Chrome(service=service, options=chrome_options)
     except Exception as e:
         print(f"Error setting up WebDriver: {e}")
@@ -57,3 +56,4 @@ def base_url():
 def admin_base_url():
     """Provides the admin application URL to the test module."""
     return ADMIN_BASE_URL
+
