@@ -19,8 +19,11 @@ def driver():
     # 1. Configure Chrome Options
     chrome_options = Options()
     
-    # FIX: Use 'new' headless mode for modern Chrome versions in containers
-    chrome_options.add_argument("--headless=new") 
+    # FIX: Explicitly set the binary path for the apt-installed Chromium
+    chrome_options.binary_location = '/usr/bin/chromium' 
+    
+    # Use 'new' headless mode for modern Chrome versions
+    chrome_options.add_argument("--headless=new")
     
     # Recommended arguments for containerized/headless execution
     chrome_options.add_argument("--no-sandbox")
@@ -30,7 +33,7 @@ def driver():
     
     # 2. Install and configure ChromeDriver
     try:
-        # ChromeDriverManager automatically fetches the driver matching the installed browser version
+        # ChromeDriverManager will now download the correct version (v143)
         service = ChromeService(ChromeDriverManager().install())
         web_driver = webdriver.Chrome(service=service, options=chrome_options)
     except Exception as e:
