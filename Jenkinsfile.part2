@@ -30,8 +30,18 @@ pipeline {
             steps {
                 echo '🧹 Stopping and removing existing containers...'
                 sh '''
-                    docker-compose -f docker-compose-part2.yml down --remove-orphans || true
+                    # 1. Attempt standard docker-compose shutdown
+                    docker-compose -f docker-compose-part2.yml down --remove-orphans -v || true
+                    
+                    # 2. Force stop/remove any potentially conflicting containers by fixed name (FIX for 'Conflict' error)
+                    docker stop prescripto-backend-dev || true
+                    docker rm prescripto-backend-dev || true
+                    docker stop prescripto-db-dev || true
+                    docker rm prescripto-db-dev || true
+                    
+                    # 3. Clean up networks and unused containers globally
                     docker container prune -f || true
+                    docker network prune -f || true
                 '''
                 echo "✓ Environment cleaned"
             }
