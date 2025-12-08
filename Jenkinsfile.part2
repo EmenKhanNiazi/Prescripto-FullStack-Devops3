@@ -1,0 +1,213 @@
+// Jenkinsfile (Declarative Pipeline) - Part 2: WITH TEST STAGE
+// This pipeline includes checkout, deployment, AND automated testing
+
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        // Docker image for tests
+        DOCKER_IMAGE = "prescripto-tests:${BUILD_NUMBER}"
+        TEST_RESULTS = "test-results-${BUILD_NUMBER}.xml"
+        BACKEND_URL = "http://localhost:4001"
+        FRONTEND_URL = "http://localhost:5174"
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo '📦 Cloning repository from GitHub...'
+                checkout scm
+                echo "✓ Repository checked out successfully"
+            }
+        }
+
+        stage('Clean Environment') {
+            steps {
+                echo '🧹 Stopping and removing existing containers...'
+                sh '''
+                    docker-compose -f docker-compose-part2.yml down --remove-orphans || true
+                    docker container prune -f || true
+                '''
+                echo "✓ Environment cleaned"
+            }
+        }
+
+        stage('Build & Deploy Application') {
+            steps {
+                echo ' Launching application using Docker Compose...'
+                sh '''
+                    docker-compose -f docker-compose-part2.yml up -d
+                    echo " Waiting for services to be ready..."
+                    sleep 15
+                '''
+                echo "✓ Application deployed successfully"
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                echo '🔍 Verifying container status...'
+                sh '''
+                    echo "Checking running containers:"
+                    docker-compose -f docker-compose-part2.yml ps
+                    
+                    echo ""
+                    echo "Checking backend health:"
+                    curl -s http://localhost:4001/api/health || echo "Backend may still be starting..."
+                    
+                    echo ""
+                    echo "✓ Deployment verification complete"
+                '''
+            }
+        }
+
+        stage('Build Test Docker Image') {
+            steps {
+                echo ' Building Docker image for tests...'
+                sh '''
+                    docker build -f Dockerfile.tests -t ${DOCKER_IMAGE} .
+                    echo "✓ Test Docker image built: ${DOCKER_IMAGE}"
+                '''
+            }
+        }
+
+        stage('Run Automated Tests') {
+            steps {
+                echo ' Running automated Selenium tests in Docker container...'
+                script {
+                    try {
+                        sh '''
+                            docker run --rm \
+                              --network host \
+                              -v /tmp/test-results:/app/test-results \
+                              -e DISPLAY=:99 \
+                              ${DOCKER_IMAGE} \
+                              pytest test_prescripto_e2e.py -v \
+                                --tb=short \
+                                --junitxml=test-results/results.xml \
+                                --html=test-results/report.html \
+                                --self-contained-html
+                        '''
+                        echo "✓ Tests completed successfully"
+                    } catch (Exception e) {
+                        echo "  Some tests may have failed"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+
+        stage('Collect Test Results') {
+            steps {
+                echo ' Collecting test results...'
+                script {
+                    sh '''
+                        if [ -d "/tmp/test-results" ]; then
+                            cp /tmp/test-results/* . || true
+                            echo "✓ Test results collected"
+                        else
+                            echo "  No test results directory found"
+                        fi
+                    '''
+                }
+                // Parse JUnit results
+                junit testResults: '**/results.xml', allowEmptyResults: true
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                echo '🧹 Cleaning up...'
+                sh '''
+                    docker-compose -f docker-compose-part2.yml down --remove-orphans || true
+                    docker image rm ${DOCKER_IMAGE} || true
+                    echo "✓ Cleanup complete"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo ' Pipeline execution finished'
+            // Archive test results
+            archiveArtifacts artifacts: '**/test-results/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: '*.xml', allowEmptyArchive: true
+            archiveArtifacts artifacts: '*.html', allowEmptyArchive: true
+        }
+
+        success {
+            echo 'Pipeline succeeded! All tests passed.'
+            emailext(
+                subject: " Jenkins Pipeline SUCCESS - Prescripto Tests Passed #${BUILD_NUMBER}",
+                body: '''
+                    <h2> Pipeline Execution Successful</h2>
+                    <p><strong>Build Number:</strong> ${BUILD_NUMBER}</p>
+                    <p><strong>Branch:</strong> ${GIT_BRANCH}</p>
+                    <p><strong>Commit:</strong> ${GIT_COMMIT}</p>
+                    <p><strong>Author:</strong> ${GIT_AUTHOR}</p>
+                    <p><strong>Duration:</strong> ${BUILD_DURATION}</p>
+                    
+                    <h3>Build Details:</h3>
+                    <ul>
+                        <li>✓ Code checked out from GitHub</li>
+                        <li>✓ Application deployed successfully</li>
+                        <li>✓ All automated tests passed</li>
+                        <li>✓ Test results archived</li>
+                    </ul>
+                    
+                    <p><strong>Test Results:</strong> <a href="${BUILD_URL}testReport">View Test Report</a></p>
+                    <p><strong>Build URL:</strong> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                    
+                    <hr>
+                    <p><em>This is an automated message from Jenkins Pipeline</em></p>
+                ''',
+                to: '${CHANGE_AUTHOR_EMAIL}',
+                mimeType: 'text/html'
+            )
+        }
+
+        failure {
+            echo ' Pipeline failed! Check logs for details.'
+            emailext(
+                subject: "Jenkins Pipeline FAILED - Prescripto Tests #${BUILD_NUMBER}",
+                body: '''
+                    <h2> Pipeline Execution Failed</h2>
+                    <p><strong>Build Number:</strong> ${BUILD_NUMBER}</p>
+                    <p><strong>Branch:</strong> ${GIT_BRANCH}</p>
+                    <p><strong>Commit:</strong> ${GIT_COMMIT}</p>
+                    <p><strong>Author:</strong> ${GIT_AUTHOR}</p>
+                    <p><strong>Error:</strong> ${BUILD_LOG_EXCERPT}</p>
+                    
+                    <p><strong>View Build Details:</strong> <a href="${BUILD_URL}console">Console Output</a></p>
+                    <p><strong>Test Report:</strong> <a href="${BUILD_URL}testReport">View Test Report</a></p>
+                    
+                    <hr>
+                    <p><em>This is an automated message from Jenkins Pipeline</em></p>
+                ''',
+                to: '${CHANGE_AUTHOR_EMAIL}',
+                mimeType: 'text/html'
+            )
+        }
+
+        unstable {
+            echo ' Pipeline unstable - Some tests may have failed'
+            emailext(
+                subject: "  Jenkins Pipeline UNSTABLE - Prescripto Tests #${BUILD_NUMBER}",
+                body: '''
+                    <h2>  Pipeline Execution Unstable</h2>
+                    <p><strong>Build Number:</strong> ${BUILD_NUMBER}</p>
+                    <p><strong>Some tests may have failed. Please review.</strong></p>
+                    <p><strong>Test Results:</strong> <a href="${BUILD_URL}testReport">View Test Report</a></p>
+                ''',
+                to: '${CHANGE_AUTHOR_EMAIL}',
+                mimeType: 'text/html'
+            )
+        }
+    }
+}
