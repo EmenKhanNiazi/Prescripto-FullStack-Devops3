@@ -11,8 +11,8 @@ pipeline {
 
     environment {
         DOCKER_TEST_IMAGE = "prescripto-tests:${BUILD_NUMBER}"
-        BACKEND_URL = "http://localhost:4001"
-        FRONTEND_URL = "http://localhost:5174"
+        BACKEND_URL = "http://43.204.98.50:4001"
+        FRONTEND_URL = "http://43.204.98.50:5174"
     }
 
     stages {
